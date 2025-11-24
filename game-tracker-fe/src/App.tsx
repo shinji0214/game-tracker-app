@@ -1,35 +1,38 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
+import Auth from './components/Auth'; // ログイン/サインアップ画面
+import Account from './components/Account';
 
+// アプリのメインコンポーネント
 function App() {
-  const [count, setCount] = useState(0)
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    // 認証状態の取得
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+        setSession(initialSession);
+    });
+
+    // 認証状態の変化を監視（ログイン/ログアウト時）
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, currentSession) => {
+        setSession(currentSession);
+      }
+    );
+
+    return () => {
+      // リスナーのクリーンアップ
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="container">
+      {/* セッションがあればメインアプリ（Account）、なければログイン画面（Auth）を表示 */}
+      {session ? <Account session={session} /> : <Auth />}
+    </div>
+  );
 }
 
 export default App
